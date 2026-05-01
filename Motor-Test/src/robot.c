@@ -11,6 +11,7 @@
 #include "buzzer.h"
 #include "supercap.h"
 #include "dji_motor.h"
+#include "lkm_motor.h"
 
 Robot_State_t g_robot_state = {0};
 extern Remote_t g_remote;
@@ -53,7 +54,7 @@ void Handle_Starting_Up_State()
     Supercap_Init(&g_supercap);
 
     // Set robot state to disabled
-    g_robot_state.state = DISABLED;
+    g_robot_state.state = ENABLED;
 }
 
 /**
@@ -62,19 +63,12 @@ void Handle_Starting_Up_State()
  */
 void Handle_Enabled_State()
 {
-    if (g_remote.online_flag == REMOTE_OFFLINE || g_remote.controller.right_switch == DOWN)
-    {
-        g_robot_state.state = DISABLED;
-    }
-    else
-    {
         // Process movement and components in enabled state
-        Referee_Set_Robot_State();
-        Process_Remote_Input();
-        Process_Chassis_Control();
-        Process_Gimbal_Control();
-        Process_Launch_Control();
-    }
+    Referee_Set_Robot_State();
+    Process_Remote_Input();
+    Process_Chassis_Control();
+    Process_Gimbal_Control();
+    Process_Launch_Control();
 }
 
 /**
@@ -83,7 +77,8 @@ void Handle_Enabled_State()
  */
 void Handle_Disabled_State()
 {
-    DJI_Motor_Disable_All();
+    // DJI_Motor_Disable_All();
+    LKM_Motor_Disable_All();
     //  Disable all major components
     g_robot_state.launch.IS_FLYWHEEL_ENABLED = 0;
     g_robot_state.chassis.x_speed = 0;
@@ -92,7 +87,8 @@ void Handle_Disabled_State()
     if (g_remote.online_flag == REMOTE_ONLINE && g_remote.controller.right_switch != DOWN)
     {
         g_robot_state.state = ENABLED;
-        DJI_Motor_Enable_All();
+        // DJI_Motor_Enable_All();
+        LKM_Motor_Enable_All();
     }
 }
 
@@ -103,7 +99,7 @@ void Process_Remote_Input()
 
 void Process_Chassis_Control()
 {
-     // USER CODE HERE
+    Chassis_Ctrl_Loop();
 }
 
 void Process_Gimbal_Control()

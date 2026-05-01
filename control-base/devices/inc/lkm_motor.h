@@ -8,7 +8,7 @@
 
 #define MAX_LKM_MOTORS (32)
 
-#define MG8016_REDUCTION_RATIO (1.0f / 6.0f)
+#define MG8016_REDUCTION_RATIO (6.0f)
 #define MG8016_MAX_AMPS 33.0f
 #define IQ_CONTROL_MAX 2048.0f
 #define FOURTEEN_BIT_ENCODER_RANGE 16383.0f
@@ -77,7 +77,7 @@ typedef struct LKM_Motor_Handle_s {
     LKM_Motor_Stats_t * stats;
     uint8_t control_mode;
     uint8_t enabled; // 1 if enabled, 0 if disabled
-    uint8_t reversal; // 1 is forward, 0 is backward
+    uint8_t reversal; // 1 is forward, -1 is backward
     uint8_t speed_limit_enabled; // 1 if enabled, 0 if disabled
     float max_speed_limit;
     float encoder_offset;
@@ -112,7 +112,7 @@ void LKM_Motor_Set_Velocity(LKM_Motor_Handle_t * motor, float velocity);
 // go to absolute angle x (multi loop)
 void LKM_Motor_Set_Absolute_Angle(LKM_Motor_Handle_t * motor, float abs_angle);
 
-// go to absolute angle x (multi loop) w/ speed control parameter
+// go to absolute angle x (multi loop) w/ speed control parameter (in rad/s)
 void LKM_Motor_Set_Absolute_Angle_Limit_Speed(LKM_Motor_Handle_t * motor, float abs_angle, float speed_limit);
 
 // go to angle within one revolution (single loop)
@@ -138,6 +138,12 @@ float LKM_Motor_Get_Absolute_Angle(LKM_Motor_Handle_t * motor);
 
 // get motor speed in rad / s
 float LKM_Motor_Get_Velocity(LKM_Motor_Handle_t * motor);
+
+// enables all motors
+void LKM_Motor_Enable_All();
+
+// disables all motors
+void LKM_Motor_Disable_All();
 
 // read error state (implement later?)
 

@@ -133,7 +133,7 @@ void LKM_Motor_Read_Stats(LKM_Motor_Handle_t * motor);
 // get encoder angle in radians
 float LKM_Motor_Get_Total_Angle(LKM_Motor_Handle_t * motor);
 
-// get absolute angle in radians. this sends a request to the motor
+// TODO: et absolute angle in radians. this sends a request to the motor
 float LKM_Motor_Get_Absolute_Angle(LKM_Motor_Handle_t * motor);
 
 // get motor speed in rad / s

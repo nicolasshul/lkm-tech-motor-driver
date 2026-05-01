@@ -355,6 +355,21 @@ void LKM_Motor_Increment_Angle_Limit_Speed(LKM_Motor_Handle_t * motor, float ang
 
 }
 
+void LKM_Motor_Read_Stats(LKM_Motor_Handle_t * motor) {
+    motor->command = LKM_HAS_COMMAND;
+    uint8_t * data = motor->can_instance->tx_buffer;
+    memset(data, 0x0, 8);
+    data[0] = LKM_CMD_READ_STATE;
+}
+
+float LKM_Motor_Get_Total_Angle(LKM_Motor_Handle_t * motor) {
+    return motor->stats->encoder_pos;
+}
+
+float LKM_Motor_Get_Velocity(LKM_Motor_Handle_t *motor) {
+    return motor->stats->motor_speed;
+}
+
 void LKM_Motor_Enable_All() {
     for (int i = 0; i < g_lkm_motor_count; i++) {
         LKM_Motor_Enable(g_lkm_motors[i]);

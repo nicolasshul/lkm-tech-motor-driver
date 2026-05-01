@@ -35,11 +35,11 @@ typedef enum {
 
     LKM_CMD_SET_TORQUE                 = 0xA1,
     LKM_CMD_SET_SPEED                  = 0xA2,
-    LKM_CMD_MULTI_ANGLE_1              = 0xA3,
+    LKM_CMD_MULTI_ANGLE                = 0xA3,
     LKM_CMD_MULTI_ANGLE_SPEED_LIM      = 0xA4,
-    LKM_CMD_SINGLE_ANGLE_1             = 0xA5,
+    LKM_CMD_SINGLE_ANGLE               = 0xA5,
     LKM_CMD_SINGLE_ANGLE_SPEED_LIM     = 0xA6,
-    LKM_CMD_INCREMENT_ANGLE_1          = 0xA7,
+    LKM_CMD_INCREMENT_ANGLE            = 0xA7,
     LKM_CMD_INCREMENT_ANGLE_SPEED_LIM  = 0xA8,
 
     LKM_CMD_READ_ENCODER               = 0x90,
@@ -59,14 +59,13 @@ typedef enum {
 } LKM_Motor_Type_e;
 
 typedef struct LKM_Motor_Stats_s {
-    LKM_Motor_Command_Byte_e command_byte;
-
     /* Motor Stats */
-    float temp; // Celcius (C)
     float torque_current; // Amps (A)
     float motor_speed; // Radians per Second 
     float encoder_pos; // Radians
     float reduction_ratio;
+    uint8_t temp; // Celcius (C)
+    LKM_Motor_Command_Byte_e command_byte;
 
 } LKM_Motor_Stats_t;
 

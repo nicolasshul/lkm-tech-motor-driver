@@ -65,3 +65,34 @@ LKM_Motor_Handle_t * LKM_Motor_Init(Motor_Config_t *config, LKM_Motor_Type_e typ
     g_lkm_motors[g_lkm_motor_count++] = motor_handle;
     return motor_handle;
 }
+
+void LKM_Motor_Decode(CAN_Instance_t *can_instance) {
+    uint8_t * data = can_instance->rx_buffer;
+    DM_Motor_Stats_t *data_frame = (DM_Motor_Stats_t *)motor_can_instance->binding_motor_stats;
+
+    uint8_t cb = data[0]; // control byte
+    data_frame->command = cb;
+
+    if (cb == LKM_CMD_SET_TORQUE                ||
+        cb == LKM_CMD_SET_SPEED                 ||
+        cb == LKM_CMD_MULTI_ANGLE               ||
+        cb == LKM_CMD_MULTI_ANGLE_SPEED_LIM     ||
+        cb == LKM_CMD_SINGLE_ANGLE              ||
+        cb == LKM_CMD_SINGLE_ANGLE_SPEED_LIM    ||
+        cb == LKM_CMD_INCREMENT_ANGLE           ||
+        cb == LKM_CMD_INCREMENT_ANGLE_SPEED_LIM ||
+        cb == LKM_CMD_READ_STATE                ||) {
+            
+        uint8_t temp = data[1];
+        data_frame->temp = temp;
+
+        uint16_t torque_current = (uint16_t) ((data[3] << 8) | data[2]);
+        data_frame->torque_current = (float) torque_current * (33.0f / 2048.0f);
+
+        int16_t motor_speed = (uint16_t) ((data[5] << 8) | data[4]);
+        data_frame->motor_speed = motor_speed * DEG_TO_RAD;
+        
+        uint16_t encoder_pos = (uint16_t) ((data[6] << 8) | data[7]);
+        data_frame->encoder_pos = (encoder_pos / 16384.0f) * 360.0f * DEG_TO_RAD;
+    }
+}

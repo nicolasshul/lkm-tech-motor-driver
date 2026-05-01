@@ -85,8 +85,8 @@ void LKM_Motor_Send(void) {
     for (int i = 0; i < g_lkm_motor_count; i++) {
         LKM_Motor_Handle_t * motor = g_lkm_motors[i];
         if (motor->command == LKM_HAS_COMMAND) {
-            motor->command = LKM_NO_COMMAND;
             CAN_Transmit(motor->can_instance);
+            motor->command = LKM_NO_COMMAND;
         }
         else {
             uint8_t * data = motor->can_instance->tx_buffer;
@@ -118,4 +118,28 @@ void LKM_Motor_Decode(CAN_Instance_t *can_instance) {
         uint16_t encoder_pos = (uint16_t) ((data[6] << 8) | data[7]);
         data_frame->encoder_pos = (encoder_pos / 16384.0f) * 360.0f * DEG_TO_RAD;
     }
+}
+
+void LKM_Motor_Enable(LKM_Motor_Handle_t * motor) {
+    motor->command = LKM_HAS_COMMAND;
+    uint8_t * data = motor->can_instance->tx_buffer;
+    memset(data, 0x0, 8);
+    data[0] = 0x88;
+    return;
+}
+
+void LKM_Motor_Disable(LKM_Motor_Handle_t * motor) {
+    motor->command = LKM_HAS_COMMAND;
+    uint8_t * data = motor->can_instance->tx_buffer;
+    memset(data, 0x0, 8);
+    data[0] = 0x80;
+    return;
+}
+
+void LKM_Motor_Stop(LKM_Motor_Handle_t * motor) {
+    motor->command = LKM_HAS_COMMAND;
+    uint8_t * data = motor->can_instance->tx_buffer;
+    memset(data, 0x0, 8);
+    data[0] = 0x81;
+    return;
 }

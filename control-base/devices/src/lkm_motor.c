@@ -12,6 +12,19 @@ uint8_t g_lkm_motor_count = 0;
 
 void LKM_Motor_Decode(CAN_Instance_t *can_instance);
 
+uint8_t message_updates_stats(uint8_t command_byte) {
+    uint8_t cb = command_byte;
+    return cb == LKM_CMD_SET_TORQUE                ||
+           cb == LKM_CMD_SET_SPEED                 ||
+           cb == LKM_CMD_MULTI_ANGLE               ||
+           cb == LKM_CMD_MULTI_ANGLE_SPEED_LIM     ||
+           cb == LKM_CMD_SINGLE_ANGLE              ||
+           cb == LKM_CMD_SINGLE_ANGLE_SPEED_LIM    ||
+           cb == LKM_CMD_INCREMENT_ANGLE           ||
+           cb == LKM_CMD_INCREMENT_ANGLE_SPEED_LIM ||
+           cb == LKM_CMD_READ_STATE;
+}
+
 LKM_Motor_Handle_t * LKM_Motor_Init(Motor_Config_t *config, LKM_Motor_Type_e type) {
     LKM_Motor_Handle_t * motor_handle = (LKM_Motor_Handle_t *) calloc(1, sizeof(LKM_Motor_Handle_t));
     // Initializing motor handle
@@ -58,6 +71,8 @@ LKM_Motor_Handle_t * LKM_Motor_Init(Motor_Config_t *config, LKM_Motor_Type_e typ
     
     receiver_can_instance->binding_motor_stats = motor_stats;
 
+    motor_handle->can_instance = receiver_can_instance;
+
     if (motor_handle->motor_type == MG8016) {
         motor_stats->reduction_ratio = MG8016_REDUCTION_RATIO;
     }
@@ -66,22 +81,30 @@ LKM_Motor_Handle_t * LKM_Motor_Init(Motor_Config_t *config, LKM_Motor_Type_e typ
     return motor_handle;
 }
 
+void LKM_Motor_Send(void) {
+    for (int i = 0; i < g_lkm_motor_count; i++) {
+        LKM_Motor_Handle_t * motor = g_lkm_motors[i];
+        if (motor->command == LKM_HAS_COMMAND) {
+            motor->command = LKM_NO_COMMAND;
+            CAN_Transmit(motor->can_instance);
+        }
+        else {
+            uint8_t * data = motor->can_instance->tx_buffer;
+            memset(data, 0x0, 8);
+            data[0] = LKM_CMD_READ_STATE;
+            CAN_Transmit(motor->can_instance);
+        }
+    }
+}
+
 void LKM_Motor_Decode(CAN_Instance_t *can_instance) {
     uint8_t * data = can_instance->rx_buffer;
-    DM_Motor_Stats_t *data_frame = (DM_Motor_Stats_t *)motor_can_instance->binding_motor_stats;
+    LKM_Motor_Stats_t *data_frame = (LKM_Motor_Stats_t *) can_instance->binding_motor_stats;
 
     uint8_t cb = data[0]; // control byte
-    data_frame->command = cb;
+    data_frame->command_byte = cb;
 
-    if (cb == LKM_CMD_SET_TORQUE                ||
-        cb == LKM_CMD_SET_SPEED                 ||
-        cb == LKM_CMD_MULTI_ANGLE               ||
-        cb == LKM_CMD_MULTI_ANGLE_SPEED_LIM     ||
-        cb == LKM_CMD_SINGLE_ANGLE              ||
-        cb == LKM_CMD_SINGLE_ANGLE_SPEED_LIM    ||
-        cb == LKM_CMD_INCREMENT_ANGLE           ||
-        cb == LKM_CMD_INCREMENT_ANGLE_SPEED_LIM ||
-        cb == LKM_CMD_READ_STATE                ||) {
+    if (message_updates_stats(cb)) {
             
         uint8_t temp = data[1];
         data_frame->temp = temp;

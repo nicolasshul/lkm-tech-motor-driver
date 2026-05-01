@@ -12,13 +12,7 @@
 
 typedef enum {
     LKM_NO_COMMAND,
-    LKM_STOP,
-    LKM_DISABLE,
-    LKM_SET_VELOCOTY,
-    LKM_INC_ANGLE,
-    LKM_GOTO_ABS_ANGLE,
-    LKM_GOTO_TOTAL_ANGLE,
-    LKM_GET_ABS_ANGLE
+    LKM_HAS_COMMAND
 } LKM_Motor_Command_e;
 
 typedef enum {
@@ -73,6 +67,7 @@ typedef struct LKM_Motor_Handle_s {
     LKM_Motor_Type_e motor_type;
     uint8_t can_bus;
     uint8_t speed_controller_id;
+    CAN_Instance_t * can_instance;
 
     /* Motor Config */
     LKM_Motor_Command_e command;

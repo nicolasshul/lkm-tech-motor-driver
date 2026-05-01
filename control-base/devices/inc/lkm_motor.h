@@ -6,6 +6,10 @@
 #include "motor.h"
 #include "pid.h"
 
+#define MAX_LKM_MOTORS (32)
+
+#define MG8016_REDUCTION_RATIO (1.0f / 6.0f)
+
 typedef enum {
     LKM_NO_COMMAND,
     LKM_STOP,
@@ -18,6 +22,7 @@ typedef enum {
 } LKM_Motor_Command_e;
 
 typedef enum {
+    LKM_NO_COMMAND_SET                 = 0x00,
     LKM_CMD_MOTOR_OFF                  = 0x80,
     LKM_CMD_MOTOR_STOP                 = 0x81,
     LKM_CMD_MOTOR_ON                   = 0x88,
@@ -61,6 +66,7 @@ typedef struct LKM_Motor_Stats_s {
     float torque_current; // Amps (A)
     float motor_speed; // Radians per Second 
     float encoder_pos; // Radians
+    float reduction_ratio;
 
 } LKM_Motor_Stats_t;
 
@@ -72,10 +78,12 @@ typedef struct LKM_Motor_Handle_s {
     /* Motor Config */
     LKM_Motor_Command_e command;
     LKM_Motor_Stats_t * stats;
+    uint8_t control_mode;
     uint8_t enabled; // 1 if enabled, 0 if disabled
     uint8_t reversal; // 1 is forward, 0 is backward
     uint8_t speed_limit_enabled; // 1 if enabled, 0 if disabled
     float max_speed_limit;
+    float encoder_offset;
 
     /* Motor Controller */ 
     PID_t * angle_pid; // Note, cannot set d value on LKM motors
@@ -91,6 +99,9 @@ void LKM_Motor_Send(void);
 
 // disable motor
 void LKM_Motor_Disable(LKM_Motor_Handle_t * motor);
+
+// enables motor
+void LKM_Motor_Enable(LKM_Motor_Handle_t * motor);
 
 // motor stop command
 void LKM_Motor_Stop(LKM_Motor_Handle_t * motor);
@@ -135,3 +146,4 @@ float LKM_Motor_Get_Velocity(LKM_Motor_Handle_t * motor);
 
 // clear error state
 
+#endif // LKM_MOTOR_H

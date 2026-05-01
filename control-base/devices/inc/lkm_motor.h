@@ -9,6 +9,9 @@
 #define MAX_LKM_MOTORS (32)
 
 #define MG8016_REDUCTION_RATIO (1.0f / 6.0f)
+#define MG8016_MAX_AMPS 33.0f
+#define IQ_CONTROL_MAX 2048.0f
+#define FOURTEEN_BIT_ENCODER_RANGE 16383.0f
 
 typedef enum {
     LKM_NO_COMMAND,
@@ -85,7 +88,7 @@ typedef struct LKM_Motor_Handle_s {
     PID_t * torque_pid;
 } LKM_Motor_Handle_t;
 
-// init motor (enable motor), write PID, zero encoder, set up can etc.
+// init motor (enable motor), write PID, zero encoder, set up can etc. PID values are capped at 255, and only P and I are used (D is ignored).
 LKM_Motor_Handle_t * LKM_Motor_Init(Motor_Config_t *config, LKM_Motor_Type_e type);
 
 // send motor command

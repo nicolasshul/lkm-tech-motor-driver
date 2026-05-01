@@ -47,23 +47,6 @@ LKM_Motor_Handle_t * LKM_Motor_Init(Motor_Config_t *config, LKM_Motor_Type_e typ
     motor_stats->motor_speed = 0.0f;
     motor_stats->encoder_pos = 0.0f;
 
-    // Initializing PID controllers
-    if ((motor_handle->control_mode & VELOCITY_CONTROL) == VELOCITY_CONTROL)
-    {
-        motor_handle->velocity_pid = malloc(sizeof(PID_t));
-        memcpy(motor_handle->velocity_pid, &config->velocity_pid, sizeof(PID_t));
-    }
-    if ((motor_handle->control_mode & POSITION_CONTROL) == POSITION_CONTROL)
-    {
-        motor_handle->angle_pid = malloc(sizeof(PID_t));
-        memcpy(motor_handle->angle_pid, &config->angle_pid, sizeof(PID_t));
-    }
-    if ((motor_handle->control_mode & TORQUE_CONTROL) == TORQUE_CONTROL)
-    {
-        motor_handle->torque_pid = malloc(sizeof(PID_t));
-        memcpy(motor_handle->torque_pid, &config->torque_pid, sizeof(PID_t));
-    }
-
     // Initializing CAN instance
     CAN_Instance_t * receiver_can_instance = NULL;
     receiver_can_instance = CAN_Device_Register(motor_handle->can_bus, motor_handle->speed_controller_id + 0x140, 
@@ -71,12 +54,94 @@ LKM_Motor_Handle_t * LKM_Motor_Init(Motor_Config_t *config, LKM_Motor_Type_e typ
     
     receiver_can_instance->binding_motor_stats = motor_stats;
 
-    motor_handle->can_instance = receiver_can_instance;
+    motor_handle->can_instance = receiver_can_instance; // remember to set pid here
 
     if (motor_handle->motor_type == MG8016) {
         motor_stats->reduction_ratio = MG8016_REDUCTION_RATIO;
     }
 
+    // writing PID information to RAM
+
+    uint8_t * data = motor_handle->can_instance->tx_buffer;
+    memset(data, 0x0, 8);
+    data[0] = LKM_CMD_WRITE_PID_RAM;
+
+    if ((motor_handle->control_mode & VELOCITY_CONTROL) == VELOCITY_CONTROL)
+    {
+        uint8_t kp = 0;
+        if (motor_handle->velocity_pid->kp < 0) {
+            kp = 0;
+        }
+        else if (motor_handle->velocity_pid->kp > 255) {
+            kp = 255;
+        }
+        else {
+            kp = (uint8_t) motor_handle->velocity_pid->kp;
+        }
+        data[4] = kp;
+        uint8_t ki = 0;
+        if (motor_handle->velocity_pid->ki < 0) {
+            ki = 0;
+        }
+        else if (motor_handle->velocity_pid->ki > 255) {
+            ki = 255;
+        }
+        else {
+            ki = (uint8_t) motor_handle->velocity_pid->ki;
+        }
+        data[5] = ki;
+    }
+    if ((motor_handle->control_mode & POSITION_CONTROL) == POSITION_CONTROL)
+    {
+        uint8_t kp = 0;
+        if (motor_handle->velocity_pid->kp < 0) {
+            kp = 0;
+        }
+        else if (motor_handle->velocity_pid->kp > 255) {
+            kp = 255;
+        }
+        else {
+            kp = (uint8_t) motor_handle->velocity_pid->kp;
+        }
+        data[1] = kp;
+        uint8_t ki = 0;
+        if (motor_handle->velocity_pid->ki < 0) {
+            ki = 0;
+        }
+        else if (motor_handle->velocity_pid->ki > 255) {
+            ki = 255;
+        }
+        else {
+            ki = (uint8_t) motor_handle->velocity_pid->ki;
+        }
+        data[2] = ki;
+    }
+    if ((motor_handle->control_mode & TORQUE_CONTROL) == TORQUE_CONTROL)
+    {
+        uint8_t kp = 0;
+        if (motor_handle->velocity_pid->kp < 0) {
+            kp = 0;
+        }
+        else if (motor_handle->velocity_pid->kp > 255) {
+            kp = 255;
+        }
+        else {
+            kp = (uint8_t) motor_handle->velocity_pid->kp;
+        }
+        data[6] = kp;
+        uint8_t ki = 0;
+        if (motor_handle->velocity_pid->ki < 0) {
+            ki = 0;
+        }
+        else if (motor_handle->velocity_pid->ki > 255) {
+            ki = 255;
+        }
+        else {
+            ki = (uint8_t) motor_handle->velocity_pid->ki;
+        }
+        data[7] = ki;
+    }
+    CAN_Transmit(motor_handle->can_instance);
     g_lkm_motors[g_lkm_motor_count++] = motor_handle;
     return motor_handle;
 }
@@ -108,15 +173,15 @@ void LKM_Motor_Decode(CAN_Instance_t *can_instance) {
             
         uint8_t temp = data[1];
         data_frame->temp = temp;
-
+        
         uint16_t torque_current = (uint16_t) ((data[3] << 8) | data[2]);
-        data_frame->torque_current = (float) torque_current * (33.0f / 2048.0f);
+        data_frame->torque_current = (float) torque_current * (MG8016_MAX_AMPS / IQ_CONTROL_MAX); // specific to the MG Motor
 
         int16_t motor_speed = (uint16_t) ((data[5] << 8) | data[4]);
         data_frame->motor_speed = motor_speed * DEG_TO_RAD;
         
         uint16_t encoder_pos = (uint16_t) ((data[6] << 8) | data[7]);
-        data_frame->encoder_pos = (encoder_pos / 16384.0f) * 360.0f * DEG_TO_RAD;
+        data_frame->encoder_pos = (encoder_pos / FOURTEEN_BIT_ENCODER_RANGE) * 360.0f * DEG_TO_RAD;
     }
 }
 
@@ -124,7 +189,7 @@ void LKM_Motor_Enable(LKM_Motor_Handle_t * motor) {
     motor->command = LKM_HAS_COMMAND;
     uint8_t * data = motor->can_instance->tx_buffer;
     memset(data, 0x0, 8);
-    data[0] = 0x88;
+    data[0] = LKM_CMD_MOTOR_ON;
     return;
 }
 
@@ -132,7 +197,7 @@ void LKM_Motor_Disable(LKM_Motor_Handle_t * motor) {
     motor->command = LKM_HAS_COMMAND;
     uint8_t * data = motor->can_instance->tx_buffer;
     memset(data, 0x0, 8);
-    data[0] = 0x80;
+    data[0] = LKM_CMD_MOTOR_OFF;
     return;
 }
 
@@ -140,6 +205,26 @@ void LKM_Motor_Stop(LKM_Motor_Handle_t * motor) {
     motor->command = LKM_HAS_COMMAND;
     uint8_t * data = motor->can_instance->tx_buffer;
     memset(data, 0x0, 8);
-    data[0] = 0x81;
+    data[0] = LKM_CMD_MOTOR_STOP;
     return;
+}
+
+void LKM_Motor_Set_Torque_Current(LKM_Motor_Handle_t * motor, float torque_current) {
+    motor->command = LKM_HAS_COMMAND;
+    uint8_t * data = motor->can_instance->tx_buffer;
+    memset(data, 0x0, 8);
+    data[0] = LKM_CMD_SET_TORQUE;
+
+    int16_t iqControl = (int16_t) ((torque_current / MG_MAX_AMPS) * IQ_CONTROL_MAX);
+
+    if (iqControl > IQ_CONTROL_MAX) {
+        iqControl = IQ_CONTROL_MAX;
+    }
+    if (iqControl < -IQ_CONTROL_MAX) {
+        iqControl = -IQ_CONTROL_MAX; 
+    }
+
+    data[4] = *(uint8_t *) (&iqControl);
+    data[5] = *((uint8_t *) (&iqControl) + 1);
+    return;    
 }
